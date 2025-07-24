@@ -1,38 +1,45 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css"; // --- Importing global styles for Tailwind CSS
+// File: app/layout.tsx
 
-// It's good practice to import the font here to apply it globally.
+// Step 1: Import 'Viewport' from 'next' alongside 'Metadata'
+import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { ThemeProvider } from "@/components/theme-provider";
+
 const inter = Inter({ subsets: ["latin"] });
 
-// Metadata for SEO. This can be overridden by child pages.
+// The metadata object now only contains SEO-related information.
 export const metadata: Metadata = {
   title: "DevKeep - Your Personal Code Snippet Manager",
   description: "Save, tag, and search your most-used code snippets and developer links.",
 };
 
-/**
- * This is the ROOT layout.
- * Every page in your application will be rendered within this component.
- * It's the perfect place for global context providers, fonts, and base HTML structure.
- *
- * @param {object} props
- * @param {React.ReactNode} props.children - This will be the content of your pages.
- */
+// Step 2: Create a new 'viewport' export for viewport-related settings.
+// Move the themeColor property here.
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "white" },
+    { media: "(prefers-color-scheme: dark)", color: "black" },
+  ],
+};
+
+// The RootLayout component itself remains unchanged.
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        {/*
-          The `children` prop here will be replaced by the content of your page.tsx files.
-          For example, when you visit the home page, `children` will be the <LandingPage /> component.
-          When you visit `/dashboard`, `children` will be the <DashboardPage />, wrapped in its own layout.
-        */}
-        {children}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -2,21 +2,26 @@
 
 import Link from "next/link";
 import { auth } from "@/lib/auth";
-import { getUserSnippets } from "@/lib/data"; // You would need to create this function
+import { getUserSnippets } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
+
+// Step 1: Import the new client component you just created
+import { SnippetsList } from "./_components/snippets-list"; 
 
 export default async function SnippetsListPage() {
   const session = await auth();
   if (!session?.user?.id) {
-    // This should be handled by your layout middleware, but it's a good safeguard
+    // This check remains for non-logged-in users
     return <p>Please sign in to view your snippets.</p>;
   }
 
+  // Step 2: Fetch the initial data on the server, just as before.
   const snippets = await getUserSnippets(session.user.id);
 
   return (
     <div>
+      {/* The header section remains here */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">My Snippets</h1>
         <Button asChild>
@@ -27,24 +32,18 @@ export default async function SnippetsListPage() {
         </Button>
       </div>
 
+      {/* 
+        Step 3: Render your new component.
+        - If snippets exist, pass the server-fetched data as a prop.
+        - If no snippets exist at all, show the "No Snippets Found" message.
+      */}
       {snippets.length > 0 ? (
-        <div className="space-y-4">
-          {snippets.map((snippet) => (
-            <Link
-              key={snippet.id}
-              href={`/dashboard/snippets/${snippet.id}`}
-              className="block p-4 border rounded-lg hover:bg-muted transition-colors"
-            >
-              <h2 className="text-xl font-semibold">{snippet.title}</h2>
-              <p className="text-sm text-muted-foreground">{snippet.language}</p>
-            </Link>
-          ))}
-        </div>
+        <SnippetsList initialSnippets={snippets} />
       ) : (
         <div className="text-center py-12 border-2 border-dashed rounded-lg">
           <h2 className="text-xl font-semibold">No Snippets Found</h2>
           <p className="text-muted-foreground mt-2">
-            Click the button above to create your first code snippet.
+            {`Click the "Create Snippet" button to get started.`}
           </p>
         </div>
       )}
