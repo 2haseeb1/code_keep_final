@@ -29,6 +29,7 @@ model Snippet {
   title     String
   content   String
   language  String   @default("plaintext")
+  tags      String[] @default([]) 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

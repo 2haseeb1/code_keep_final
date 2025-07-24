@@ -4,32 +4,27 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Input } from "@/components/ui/input";
 import type { Snippet } from "@prisma/client";
-import { toast } from "sonner"; // Step 1: Import the toast function
+import { toast } from "sonner";
+
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge"; // Step 1: Import the Badge component
 
 /**
  * A helper function to read a cookie and then delete it.
- * This prevents the toast from showing up again on page refresh.
- * @param name The name of the cookie to read.
- * @returns The value of the cookie, or null if not found.
  */
 function getCookieAndDelete(name: string): string | null {
   if (typeof document === 'undefined') return null;
-
   const value = `; ${document.cookie}`;
   const parts = value.split(`; ${name}=`);
-
   if (parts.length === 2) {
     const result = parts.pop()?.split(';').shift();
     // Delete the cookie by setting its expiration date to the past
     document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
     return result ? decodeURIComponent(result) : null;
   }
-
   return null;
 }
-
 
 interface SnippetsListProps {
   initialSnippets: Snippet[];
@@ -39,8 +34,7 @@ export function SnippetsList({ initialSnippets }: SnippetsListProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredSnippets, setFilteredSnippets] = useState(initialSnippets);
 
-  // This effect runs only once when the component mounts.
-  // It checks for a 'toast' cookie left by a server action.
+  // Effect to show toast notifications from server actions
   useEffect(() => {
     const toastMessage = getCookieAndDelete('toast');
     if (toastMessage) {
@@ -48,11 +42,14 @@ export function SnippetsList({ initialSnippets }: SnippetsListProps) {
     }
   }, []); // Empty dependency array ensures this runs only once on mount
 
-  // This effect handles the client-side search functionality.
+  // Effect to handle client-side search, now including tags
   useEffect(() => {
+    const lowercasedTerm = searchTerm.toLowerCase();
     const results = initialSnippets.filter(snippet =>
-      snippet.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      snippet.language.toLowerCase().includes(searchTerm.toLowerCase())
+      snippet.title.toLowerCase().includes(lowercasedTerm) ||
+      snippet.language.toLowerCase().includes(lowercasedTerm) ||
+      // Step 2: Add logic to search within the tags array
+      snippet.tags.some(tag => tag.toLowerCase().includes(lowercasedTerm))
     );
     setFilteredSnippets(results);
   }, [searchTerm, initialSnippets]);
@@ -62,7 +59,8 @@ export function SnippetsList({ initialSnippets }: SnippetsListProps) {
       <div className="mb-6">
         <Input
           type="search"
-          placeholder="Search snippets by title or language..."
+          // Step 3: Update the placeholder text
+          placeholder="Search snippets by title, language, or tag..."
           className="w-full max-w-md"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -77,8 +75,19 @@ export function SnippetsList({ initialSnippets }: SnippetsListProps) {
               href={`/dashboard/snippets/${snippet.id}`}
               className="block p-4 border rounded-lg hover:bg-muted dark:hover:bg-gray-800 transition-colors"
             >
-              <h2 className="text-xl font-semibold">{snippet.title}</h2>
-              <p className="text-sm text-muted-foreground">{snippet.language}</p>
+              <div className="flex justify-between items-start mb-2">
+                <h2 className="text-xl font-semibold">{snippet.title}</h2>
+                <p className="text-sm text-muted-foreground flex-shrink-0 ml-4">{snippet.language}</p>
+              </div>
+              
+              {/* Step 4: Display the tags as badges */}
+              {snippet.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {snippet.tags.map((tag) => (
+                    <Badge key={tag} variant="secondary">{tag}</Badge>
+                  ))}
+                </div>
+              )}
             </Link>
           ))}
         </div>

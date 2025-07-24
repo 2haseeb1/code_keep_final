@@ -1,44 +1,46 @@
-import { auth, signOut } from "@/lib/auth";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
-import { SignInButton } from "./sign-in-button";
+// File: components/auth/user-avatar.tsx
 
-export async function UserAvatar() {
-  const session = await auth();
+import type { User } from "next-auth"; // Step 1: Import the User type from next-auth
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { SignOutButton } from "./sign-out-button";
 
-  if (!session?.user) {
-    // Optionally return a sign-in button if no user is found
-    return <SignInButton />;
-  }
+// Step 2: Define an interface for the component's props
+interface UserAvatarProps {
+  user: User; // It expects a 'user' prop of type 'User'
+}
 
-  const { name, image } = session.user;
-
+// Step 3: Update the function to accept the props
+export function UserAvatar({ user }: UserAvatarProps) {
   return (
-    <div className="flex items-center gap-4">
-      <div className="flex items-center gap-2">
-        {image && (
-          <Image
-            src={image}
-            alt={name || "User avatar"}
-            width={32}
-            height={32}
-            className="rounded-full"
-          />
-        )}
-        <span className="text-sm font-medium">{name}</span>
-      </div>
-      <form
-        action={async () => {
-          "use server";
-          await signOut();
-        }}
-      >
-        <Button type="submit" variant="ghost" size="sm">
-          <LogOut className="mr-2 h-4 w-4" />
-          Sign Out
-        </Button>
-      </form>
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger>
+        <Avatar>
+          {/* Step 4: Use the 'user' prop to display image and name */}
+          <AvatarImage src={user.image ?? ""} alt={user.name ?? "User"} />
+          <AvatarFallback>{user.name?.[0].toUpperCase()}</AvatarFallback>
+        </Avatar>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>
+          <p className="font-medium">{user.name}</p>
+          <p className="text-xs text-muted-foreground">{user.email}</p>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem className="cursor-pointer">Profile</DropdownMenuItem>
+        <DropdownMenuItem className="cursor-pointer">Settings</DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem>
+          <SignOutButton />
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

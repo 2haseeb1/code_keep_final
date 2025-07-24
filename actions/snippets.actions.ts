@@ -8,20 +8,21 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { cookies } from "next/headers"; // Step 1: Import the 'cookies' function
+import { cookies } from "next/headers";
 
-// Define the shape of the state object for our forms
+// Define the shape of the state object for our forms, including tags
 export interface SnippetFormState {
   errors?: {
     title?: string[];
     content?: string[];
     language?: string[];
+    tags?: string[]; // Added tags to errors
   };
   message?: string | null;
   success?: boolean;
 }
 
-// Define a schema for validation using Zod
+// Define a schema for validation, now including the 'tags' field
 const snippetSchema = z.object({
   title: z
     .string()
@@ -30,6 +31,13 @@ const snippetSchema = z.object({
   content: z
     .string()
     .min(10, { message: "Code snippet must be at least 10 characters long." }),
+  // Add tags to the schema. It transforms a comma-separated string into a string array.
+  tags: z.string().transform((val) =>
+    val
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0)
+  ),
 });
 
 /**
@@ -47,10 +55,12 @@ export async function createSnippet(
     };
   }
 
+  // Validate all fields, including the new 'tags' field
   const result = snippetSchema.safeParse({
     title: formData.get("title"),
     language: formData.get("language"),
     content: formData.get("content"),
+    tags: formData.get("tags"),
   });
 
   if (!result.success) {
@@ -67,6 +77,7 @@ export async function createSnippet(
         title: result.data.title,
         language: result.data.language,
         content: result.data.content,
+        tags: result.data.tags, // Save the tags array to the database
         userId: session.user.id,
       },
     });
@@ -78,10 +89,7 @@ export async function createSnippet(
   }
 
   revalidatePath("/dashboard/snippets");
-  // Set a cookie for the success toast before redirecting
-  (await
-    // Set a cookie for the success toast before redirecting
-    cookies()).set("toast", "Snippet created successfully!");
+  (await cookies()).set("toast", "Snippet created successfully!");
   redirect("/dashboard/snippets");
 }
 
@@ -105,10 +113,15 @@ export async function updateSnippet(
     title: formData.get("title"),
     language: formData.get("language"),
     content: formData.get("content"),
+    tags: formData.get("tags"),
   });
 
   if (!result.success) {
-    return { errors: result.error.flatten().fieldErrors, success: false };
+    return {
+      errors: result.error.flatten().fieldErrors,
+      message: "Invalid fields. Please correct the errors and try again.",
+      success: false,
+    };
   }
 
   try {
@@ -127,6 +140,7 @@ export async function updateSnippet(
         title: result.data.title,
         language: result.data.language,
         content: result.data.content,
+        tags: result.data.tags, // Update the tags array in the database
       },
     });
   } catch (error) {
@@ -139,10 +153,7 @@ export async function updateSnippet(
   revalidatePath(`/dashboard/snippets/${snippetId}`);
   revalidatePath("/dashboard/snippets");
 
-  // Set a cookie for the success toast before redirecting
-  (await
-    // Set a cookie for the success toast before redirecting
-    cookies()).set("toast", "Snippet updated successfully!");
+  (await cookies()).set("toast", "Snippet updated successfully!");
   redirect(`/dashboard/snippets/${snippetId}`);
 }
 
@@ -152,7 +163,7 @@ export async function updateSnippet(
 export async function deleteSnippet(
   prevState: { message?: string | null; success?: boolean },
   formData: FormData
-) {
+): Promise<{ message: string | null; success: boolean }> {
   const snippetId = formData.get("snippetId") as string;
   if (!snippetId) {
     return { message: "Error: Snippet ID not found.", success: false };
@@ -179,12 +190,6 @@ export async function deleteSnippet(
   }
 
   revalidatePath("/dashboard/snippets");
-
-  // Step 2: Set a 'toast' cookie with the success message
-  (await
-    // Step 2: Set a 'toast' cookie with the success message
-    cookies()).set("toast", "Snippet deleted successfully!");
-
-  // Step 3: Redirect from the server. This prevents the 404 race condition.
+  (await cookies()).set("toast", "Snippet deleted successfully!");
   redirect("/dashboard/snippets");
 }

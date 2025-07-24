@@ -2,20 +2,16 @@
 
 "use client";
 
-// Step 1: Import 'useActionState' from 'react' instead of 'useFormState' from 'react-dom'
 import { useActionState } from "react";
-import { createSnippet } from "@/actions/snippets.actions";
+import { createSnippet, SnippetFormState } from "@/actions/snippets.actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { SnippetFormState } from "@/actions/snippets.actions"; // Import the state type for clarity
 
 export default function NewSnippetPage() {
-  // The initial state for our form
-  const initialState: SnippetFormState = { errors: {}, message: null };
-
-  // Step 2: Use the 'useActionState' hook. It works exactly the same way.
+  // The initial state for our form, matching the SnippetFormState interface
+  const initialState: SnippetFormState = { errors: {}, message: null, success: false };
   const [formState, formAction] = useActionState(createSnippet, initialState);
 
   return (
@@ -25,8 +21,11 @@ export default function NewSnippetPage() {
       <form action={formAction} className="space-y-6 max-w-2xl">
         <div className="space-y-2">
           <Label htmlFor="title">Title</Label>
-          <Input id="title" name="title" placeholder="e.g., React Hook for Fetching Data" />
-          {/* Display title-specific errors from the form state */}
+          <Input 
+            id="title" 
+            name="title" 
+            placeholder="e.g., React Hook for Fetching Data" 
+          />
           {formState.errors?.title && (
             <p className="text-sm text-red-500">{formState.errors.title.join(", ")}</p>
           )}
@@ -34,9 +33,32 @@ export default function NewSnippetPage() {
 
         <div className="space-y-2">
           <Label htmlFor="language">Language</Label>
-          <Input id="language" name="language" placeholder="e.g., JavaScript" />
-          {/* You can add language-specific errors here if you update the schema */}
+          <Input 
+            id="language" 
+            name="language" 
+            placeholder="e.g., JavaScript" 
+          />
+          {formState.errors?.language && (
+            <p className="text-sm text-red-500">{formState.errors.language.join(", ")}</p>
+          )}
         </div>
+
+        {/* --- Start of New Tags Field --- */}
+        <div className="space-y-2">
+          <Label htmlFor="tags">Tags</Label>
+          <Input 
+            id="tags" 
+            name="tags"
+            placeholder="e.g., react, javascript, hook"
+          />
+          <p className="text-sm text-muted-foreground">
+            Enter tags separated by commas.
+          </p>
+          {formState.errors?.tags && (
+            <p className="text-sm text-red-500">{formState.errors.tags.join(", ")}</p>
+          )}
+        </div>
+        {/* --- End of New Tags Field --- */}
 
         <div className="space-y-2">
           <Label htmlFor="content">Code</Label>
@@ -47,13 +69,12 @@ export default function NewSnippetPage() {
             rows={15}
             className="font-mono"
           />
-          {/* Display content-specific errors from the form state */}
           {formState.errors?.content && (
             <p className="text-sm text-red-500">{formState.errors.content.join(", ")}</p>
           )}
         </div>
-
-        {/* Display a general form message (like 'Database Error' or 'Not Authenticated') */}
+        
+        {/* Display general form messages (like 'Not Authenticated' or 'Database Error') */}
         {formState.message && (
           <div className="p-2 bg-red-100 border border-red-400 text-red-700 rounded">
             {formState.message}

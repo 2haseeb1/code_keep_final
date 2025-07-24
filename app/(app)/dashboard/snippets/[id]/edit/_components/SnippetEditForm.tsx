@@ -4,7 +4,7 @@
 
 import { useActionState, useEffect } from "react";
 import type { Snippet } from "@prisma/client";
-import { toast } from "sonner"; // Step 1: Import the toast function
+import { toast } from "sonner";
 
 import { updateSnippet, SnippetFormState } from "@/actions/snippets.actions";
 import { Button } from "@/components/ui/button";
@@ -21,24 +21,23 @@ export default function SnippetEditForm({ snippet }: SnippetEditFormProps) {
   const updateSnippetAction = updateSnippet.bind(null, snippet.id);
 
   // Set up the form state management with useActionState
-  const initialState: SnippetFormState = { errors: {}, message: null };
+  const initialState: SnippetFormState = { errors: {}, message: null, success: false };
   const [formState, formAction] = useActionState(updateSnippetAction, initialState);
 
-  // Step 2: Add a useEffect to show toasts when a general error message is returned
+  // useEffect to show toasts for success or general error messages
   useEffect(() => {
-    // Show a toast only for general form messages, not for field-specific errors
-    if (formState?.message && !formState.errors) {
-      toast.error("Update Failed", {
-        description: formState.message,
-        action: {
-          label: "Dismiss",
-          onClick: () => toast.dismiss(),
-        },
-      });
+    if (formState?.message) {
+      if (formState.success) {
+        toast.success(formState.message);
+        // We will no longer redirect from here since the action does it
+      } else if (!formState.errors) {
+        toast.error("Update Failed", {
+          description: formState.message,
+        });
+      }
     }
   }, [formState]);
 
-  // The complete JSX for the form
   return (
     <div>
       <h1 className="text-3xl font-bold mb-6">Edit Snippet</h1>
@@ -68,6 +67,25 @@ export default function SnippetEditForm({ snippet }: SnippetEditFormProps) {
           )}
         </div>
 
+        {/* --- Start of New Tags Field --- */}
+        <div className="space-y-2">
+          <Label htmlFor="tags">Tags</Label>
+          <Input 
+            id="tags" 
+            name="tags"
+            // Convert the array of tags into a comma-separated string for the input
+            defaultValue={snippet.tags.join(', ')}
+            placeholder="e.g., react, javascript, hook"
+          />
+          <p className="text-sm text-muted-foreground">
+            Enter tags separated by commas.
+          </p>
+          {formState.errors?.tags && (
+            <p className="text-sm text-red-500">{formState.errors.tags.join(", ")}</p>
+          )}
+        </div>
+        {/* --- End of New Tags Field --- */}
+
         <div className="space-y-2">
           <Label htmlFor="content">Code</Label>
           <Textarea
@@ -81,14 +99,11 @@ export default function SnippetEditForm({ snippet }: SnippetEditFormProps) {
             <p className="text-sm text-red-500">{formState.errors.content.join(", ")}</p>
           )}
         </div>
-
-        {/* This block will no longer be shown, as the message is handled by the toast.
-            You can keep it as a fallback or remove it. */}
-        {/* {formState.message && !formState.errors && (
-          <div className="p-2 bg-red-100 border border-red-400 text-red-700 rounded">
-            {formState.message}
-          </div>
-        )} */}
+        
+        {/* General error messages handled by toast, so this is optional */}
+        {formState.message && !formState.errors && !formState.success && (
+          <p className="text-sm text-red-500">{formState.message}</p>
+        )}
 
         <Button type="submit">Update Snippet</Button>
       </form>
