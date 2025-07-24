@@ -1,8 +1,9 @@
 @import "tailwindcss";
+@import "highlight.js/styles/vs2015.css";
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #9b14149d;
 }
 
 @theme inline {
