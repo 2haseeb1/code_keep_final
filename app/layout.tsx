@@ -1,21 +1,21 @@
 // File: app/layout.tsx
 
-// Step 1: Import 'Viewport' from 'next' alongside 'Metadata'
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 
+// Step 1: Import the Toaster component from sonner (or your UI component)
+import { Toaster } from "sonner"; 
+// Note: If you have a custom styled sonner component from shadcn/ui, the path might be "@/components/ui/sonner"
+
 const inter = Inter({ subsets: ["latin"] });
 
-// The metadata object now only contains SEO-related information.
 export const metadata: Metadata = {
   title: "DevKeep - Your Personal Code Snippet Manager",
   description: "Save, tag, and search your most-used code snippets and developer links.",
 };
 
-// Step 2: Create a new 'viewport' export for viewport-related settings.
-// Move the themeColor property here.
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "white" },
@@ -23,7 +23,6 @@ export const viewport: Viewport = {
   ],
 };
 
-// The RootLayout component itself remains unchanged.
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -39,6 +38,15 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+
+          {/* 
+            Step 2: Add the Toaster component here, inside the ThemeProvider.
+            This makes it available globally across your entire application.
+            - `richColors` enables pre-styled success, error, warning, and info toasts.
+            - `position` sets where the toasts will appear on the screen.
+          */}
+          <Toaster richColors position="bottom-right" />
+          
         </ThemeProvider>
       </body>
     </html>

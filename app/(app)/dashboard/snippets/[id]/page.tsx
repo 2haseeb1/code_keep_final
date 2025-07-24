@@ -2,19 +2,18 @@
 
 import type { Metadata } from 'next';
 import { notFound } from "next/navigation";
+import Link from 'next/link'; // Step 1: Import the Link component
 import { auth } from "@/lib/auth";
 import { getSnippetById } from "@/lib/data";
 import { CodeBlock } from "./_components/code-block";
-
-// Import your custom configured highlight.js instance
 import hljs from '@/lib/highlighter';
+import { DeleteButton } from './_components/DeleteButton';
+import { Button } from '@/components/ui/button'; // Step 2: Import the Button component
 
-// Define the props type for the page and metadata function
 type Props = {
   params: Promise<{ id: string }>;
 };
 
-// The generateMetadata function remains unchanged.
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const snippet = await getSnippetById(id);
@@ -29,58 +28,47 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-// This is the main server component for the page
 export default async function SnippetDetailPage({ params }: Props) {
-  // Await the params promise to get the id
   const { id } = await params;
-  
-  // Get the current user session
   const session = await auth();
-  
-  // Fetch the snippet data from the database
   const snippet = await getSnippetById(id);
 
-  // Security check
   if (!snippet || snippet.userId !== session?.user?.id) {
     notFound();
   }
 
-  // --- Start of the fix ---
-
-  // Step 1: Sanitize the language name from the database.
-  // We use 'let' because we might need to change its value.
   let language = snippet.language.toLowerCase().replace(/\s/g, '');
-
-  // Step 2: Check if the sanitized language is registered in our hljs instance.
-  // The getLanguage() method returns 'undefined' if the language is not found.
   if (!hljs.getLanguage(language)) {
-    // Step 3: If the language is not found, fall back to a safe default.
-    // 'typescript' is a good default for a modern web dev snippet app.
     language = 'typescript'; 
   }
-
-  // Use the (now guaranteed to be valid) language to highlight the code.
   const highlightedCode = hljs.highlight(snippet.content, {
     language: language,
     ignoreIllegals: true,
   }).value;
 
-  // --- End of the fix ---
-
-  // This is the JSX that renders the page
   return (
     <div className="max-w-4xl mx-auto">
-      
-      {/* Header Section */}
-      <div className="mb-6 pb-4 border-b border-red-200">
+      <div className="mb-6 pb-4 border-b">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-red-800">{snippet.title}</h1>
+          <h1 className="text-2xl font-semibold">{snippet.title}</h1>
+          
+          {/* --- Start of the update --- */}
+          <div className="flex items-center gap-4">
+            {/* Step 3: Add the Edit button wrapped in a Link */}
+            <Link href={`/dashboard/snippets/${snippet.id}/edit`}>
+              <Button variant="outline" size="sm">
+                Edit
+              </Button>
+            </Link>
+
+            {/* The DeleteButton remains as it was */}
+            <DeleteButton snippetId={snippet.id} />
+          </div>
+          {/* --- End of the update --- */}
         </div>
       </div>
-
-      {/* Render the CodeBlock with the highlighted HTML */}
+      
       <CodeBlock codeHtml={highlightedCode} rawCode={snippet.content} />
-
     </div>
   );
 }

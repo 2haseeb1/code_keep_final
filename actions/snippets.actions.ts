@@ -1,60 +1,190 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+// File: actions/snippets.actions.ts
+
 "use server";
 
+import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { SnippetSchema } from "@/lib/schemas";
+import { auth } from "@/lib/auth";
+import { cookies } from "next/headers"; // Step 1: Import the 'cookies' function
 
-// This is a type for the form state, used with React's useFormState hook
-export type SnippetFormState = {
+// Define the shape of the state object for our forms
+export interface SnippetFormState {
   errors?: {
     title?: string[];
     content?: string[];
+    language?: string[];
   };
   message?: string | null;
-};
+  success?: boolean;
+}
 
+// Define a schema for validation using Zod
+const snippetSchema = z.object({
+  title: z
+    .string()
+    .min(3, { message: "Title must be at least 3 characters long." }),
+  language: z.string().min(1, { message: "Language cannot be empty." }),
+  content: z
+    .string()
+    .min(10, { message: "Code snippet must be at least 10 characters long." }),
+});
+
+/**
+ * Server action to CREATE a new snippet.
+ */
 export async function createSnippet(
   prevState: SnippetFormState,
   formData: FormData
 ): Promise<SnippetFormState> {
-  // 1. Authenticate the user
   const session = await auth();
   if (!session?.user?.id) {
-    return { message: "Not authenticated." };
-  }
-
-  // 2. Validate the form data
-  const validatedFields = SnippetSchema.safeParse({
-    title: formData.get("title"),
-    content: formData.get("content"),
-    language: formData.get("language"),
-  });
-
-  if (!validatedFields.success) {
     return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: "Invalid fields. Failed to create snippet.",
+      message: "You must be signed in to create a snippet.",
+      success: false,
     };
   }
 
-  // 3. Persist data to the database
+  const result = snippetSchema.safeParse({
+    title: formData.get("title"),
+    language: formData.get("language"),
+    content: formData.get("content"),
+  });
+
+  if (!result.success) {
+    return {
+      errors: result.error.flatten().fieldErrors,
+      message: "Invalid fields. Please correct the errors and try again.",
+      success: false,
+    };
+  }
+
   try {
     await prisma.snippet.create({
       data: {
-        title: validatedFields.data.title,
-        content: validatedFields.data.content,
-        language: validatedFields.data.language,
+        title: result.data.title,
+        language: result.data.language,
+        content: result.data.content,
         userId: session.user.id,
       },
     });
   } catch (error) {
-    return { message: "Database Error: Failed to create snippet." };
+    return {
+      message: "Database error: Failed to create snippet.",
+      success: false,
+    };
   }
 
-  // 4. Revalidate cache and redirect
   revalidatePath("/dashboard/snippets");
+  // Set a cookie for the success toast before redirecting
+  (await
+    // Set a cookie for the success toast before redirecting
+    cookies()).set("toast", "Snippet created successfully!");
+  redirect("/dashboard/snippets");
+}
+
+/**
+ * Server action to UPDATE an existing snippet.
+ */
+export async function updateSnippet(
+  snippetId: string,
+  prevState: SnippetFormState,
+  formData: FormData
+): Promise<SnippetFormState> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return {
+      message: "You must be signed in to update a snippet.",
+      success: false,
+    };
+  }
+
+  const result = snippetSchema.safeParse({
+    title: formData.get("title"),
+    language: formData.get("language"),
+    content: formData.get("content"),
+  });
+
+  if (!result.success) {
+    return { errors: result.error.flatten().fieldErrors, success: false };
+  }
+
+  try {
+    const snippet = await prisma.snippet.findUnique({
+      where: { id: snippetId },
+    });
+    if (snippet?.userId !== session.user.id) {
+      return {
+        message: "Unauthorized: You do not own this snippet.",
+        success: false,
+      };
+    }
+    await prisma.snippet.update({
+      where: { id: snippetId },
+      data: {
+        title: result.data.title,
+        language: result.data.language,
+        content: result.data.content,
+      },
+    });
+  } catch (error) {
+    return {
+      message: "Database error: Failed to update snippet.",
+      success: false,
+    };
+  }
+
+  revalidatePath(`/dashboard/snippets/${snippetId}`);
+  revalidatePath("/dashboard/snippets");
+
+  // Set a cookie for the success toast before redirecting
+  (await
+    // Set a cookie for the success toast before redirecting
+    cookies()).set("toast", "Snippet updated successfully!");
+  redirect(`/dashboard/snippets/${snippetId}`);
+}
+
+/**
+ * Server action to DELETE a snippet.
+ */
+export async function deleteSnippet(
+  prevState: { message?: string | null; success?: boolean },
+  formData: FormData
+) {
+  const snippetId = formData.get("snippetId") as string;
+  if (!snippetId) {
+    return { message: "Error: Snippet ID not found.", success: false };
+  }
+
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { message: "Error: Not authenticated.", success: false };
+  }
+
+  try {
+    const snippet = await prisma.snippet.findUnique({
+      where: { id: snippetId },
+    });
+    if (snippet?.userId !== session.user.id) {
+      return { message: "Error: Unauthorized action.", success: false };
+    }
+    await prisma.snippet.delete({ where: { id: snippetId } });
+  } catch (error) {
+    return {
+      message: "Database Error: Failed to delete snippet.",
+      success: false,
+    };
+  }
+
+  revalidatePath("/dashboard/snippets");
+
+  // Step 2: Set a 'toast' cookie with the success message
+  (await
+    // Step 2: Set a 'toast' cookie with the success message
+    cookies()).set("toast", "Snippet deleted successfully!");
+
+  // Step 3: Redirect from the server. This prevents the 404 race condition.
   redirect("/dashboard/snippets");
 }
